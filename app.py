@@ -9,7 +9,7 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity
 )
 
-# -------------------- APP CONFIG --------------------
+
 app = Flask(__name__)
 
 app.secret_key = "supersecretkey"
@@ -21,7 +21,7 @@ db = SQLAlchemy(app)
 api = Api(app)
 jwt = JWTManager(app)
 
-# -------------------- HELPERS --------------------
+
 def expense_to_dict(expense):
     return {
         "id": expense.id,
@@ -31,7 +31,7 @@ def expense_to_dict(expense):
         "date_time": expense.date_time.isoformat()
     }
 
-# -------------------- MODELS --------------------
+
 class User_Model(db.Model):
     __tablename__ = "users"
 
@@ -61,7 +61,7 @@ class Expense_Model(db.Model):
     def __repr__(self):
         return f"Expense {self.id} - {self.Type}"
 
-# -------------------- WEB ROUTES (HTML) --------------------
+
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -168,7 +168,7 @@ def logout():
     session.pop("user_id", None)
     return redirect(url_for("login"))
 
-# -------------------- REST API (JSON) --------------------
+
 class ApiLogin(Resource):
     def post(self):
         data = request.get_json()
@@ -229,12 +229,12 @@ class ExpenseAPI(Resource):
         db.session.commit()
         return {"message": "Deleted"}, 200
 
-# -------------------- API ROUTES --------------------
+
 api.add_resource(ApiLogin, "/api/login")
 api.add_resource(ExpenseListAPI, "/api/expenses")
 api.add_resource(ExpenseAPI, "/api/expenses/<int:id>")
 
-# -------------------- RUN --------------------
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
