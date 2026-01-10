@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+   <h2>Add an Expense!</h2>
+     <form action="{{ url_for('dashboard') }}" method="POST">
+       <div class="mb-3">
+        <label for="Amt" class="form-label">Amount Spent</label>
+        <input type="number" class="form-control" name="Amt" id="Amt" placeholder="Enter integer value only" aria-describedby="emailHelp">
+       </div> 
+       <div class="mb-3">
+         <label for="Type" class="form-label">Type of Expenditure</label>
+         <select class="form-control" name="Type" id="Type">
+           <option value="" disabled selected>Select Category</option>
+           <option value="Food">Food</option>
+           <option value="Travel">Travel</option>
+           <option value="Shopping">Shopping</option>
+           <option value="Bills">Bills</option>
+           <option value="Entertainment">Entertainment</option>
+           <option value="Groceries">Groceries</option>
+           <option value="Other">Other</option>
+        </select>
+
+       </div>
+       <div class="mb-3">
+         <label for="Desc" class="form-label">Description</label>
+         <input type="text" class="form-control" name="Desc" id="Desc" placeholder="Example-I bought a birthdy gift for a friend ">
+       </div>
+       <button type="submit" class="btn btn-primary">Submit</button>
+       <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+     </form>
+  <h2>Your Expenditure</h2>
+  <h3>Total $ Spent today is : {{total_today}}</h3>
+  <h4>Total of the Month is : {{total_month}}</h4>
+  {% if allExpense|length == 0 %}
+            <div class="alert alert-info" role="alert">
+                No records found! Add your first Expenditure above.
+            </div>
+  {% else %}
+   <table class="table">
+    <thead>
+     <tr>
+      <th scope="col">SNo</th>
+      <th scope="col">Amount Spent</th>
+      <th scope="col">Type of Expenditure</th>
+      <th scope="col">Description</th>
+      <th scope="col">Date/Time</th>
+      <th scope="col">Actions</th>
+     </tr>
+    </thead>
+  <tbody>
+    {% for expense in allExpense %} 
+        <tr>
+           <th scope="row">{{expense.id}}</th>
+           <td>{{expense.Amt}}</td>
+           <td>{{expense.Type}}</td>
+           <td>{{expense.Desc}}</td>  
+           <td>{{expense.date_time}}</td> 
+             <td>
+               <a href="/delete/{{expense.id}}" class="btn btn-outline-danger btn-sm mx-1">Delete</a>
+               <a href="/update/{{expense.id}}" class="btn btn-outline-dark btn-sm mx-2">Update</a>
+            </td>
+         </tr>
+    {% endfor %}
+    
+  </tbody>
+</table>
+  {% endif %}
+
+{% endblock content %}
