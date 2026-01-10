@@ -1,0 +1,36 @@
+
+
+body{
+    background-color: palevioletred;
+    min-height: 100vh;
+}
+.login-bg{
+    background-color: bisque;
+}
+.login-card{
+    width: 100%;
+    max-width: 420px;
+    border-radius: 15px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    border: none;
+}
+
+.login-card h3{
+    color: hotpink;
+    font-weight: 700;
+
+}
+
+.login-card .btn-primary:hover{
+    background: #4f464f
+}
+
+.login-card .btn-outline-secondary {
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.reg-bg{
+    background-color: beige;
+}
+
