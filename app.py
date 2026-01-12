@@ -9,7 +9,7 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity
 )
 
-# -------------------- APP CONFIG --------------------
+
 app = Flask(__name__)
 
 app.secret_key = "supersecretkey"
@@ -168,7 +168,7 @@ def logout():
     session.pop("user_id", None)
     return redirect(url_for("login"))
 
-# -------------------- REST API (JSON) --------------------
+
 class ApiLogin(Resource):
     def post(self):
         data = request.get_json()
@@ -229,12 +229,12 @@ class ExpenseAPI(Resource):
         db.session.commit()
         return {"message": "Deleted"}, 200
 
-# -------------------- API ROUTES --------------------
+
 api.add_resource(ApiLogin, "/api/login")
 api.add_resource(ExpenseListAPI, "/api/expenses")
 api.add_resource(ExpenseAPI, "/api/expenses/<int:id>")
 
-# -------------------- RUN --------------------
+
 import os
 
 if __name__ == "__main__":
