@@ -21,7 +21,7 @@ db = SQLAlchemy(app)
 api = Api(app)
 jwt = JWTManager(app)
 
-# -------------------- HELPERS --------------------
+
 def expense_to_dict(expense):
     return {
         "id": expense.id,
@@ -31,7 +31,7 @@ def expense_to_dict(expense):
         "date_time": expense.date_time.isoformat()
     }
 
-# -------------------- MODELS --------------------
+
 class User_Model(db.Model):
     __tablename__ = "users"
 
@@ -61,7 +61,7 @@ class Expense_Model(db.Model):
     def __repr__(self):
         return f"Expense {self.id} - {self.Type}"
 
-# -------------------- WEB ROUTES (HTML) --------------------
+
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
