@@ -21,6 +21,10 @@ db = SQLAlchemy(app)
 api = Api(app)
 jwt = JWTManager(app)
 
+with app.app_context():
+    db.create_all()
+
+
 
 def expense_to_dict(expense):
     return {
