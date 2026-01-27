@@ -1,52 +1,38 @@
-
 import csv
+import json
 from io import TextIOWrapper
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 from sqlalchemy import func, extract
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_restful import Api, Resource
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_restful import Api
+from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
+from intent_parser import parse_intent
 
 
 load_dotenv()
 
 
+
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
+
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///expense.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["JWT_SECRET_KEY"] = "jwt-secret-key"
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "jwt-secret-key")
 
 db = SQLAlchemy(app)
 api = Api(app)
 jwt = JWTManager(app)
 
 
-from transformers import pipeline
-
-classifier = pipeline(
-    "zero-shot-classification",
-    model="facebook/bart-large-mnli"
-)
-
-INTENT_LABELS = [
-    "TOTAL_EXPENSE",
-    "CATEGORY_EXPENSE",
-    "MONTHLY_SUMMARY",
-    "SAVING_ADVICE",
-    "GENERAL_CHAT"
-]
-
-def get_intent_llm(message):
-    result = classifier(message, INTENT_LABELS)
-    return result["labels"][0]
-
-
+# ----------------------
+# Database Models
+# ----------------------
 class User_Model(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
@@ -71,6 +57,7 @@ with app.app_context():
     db.create_all()
 
 
+
 def total_expense_this_month(user_id):
     now = datetime.now()
     return db.session.query(func.sum(Expense_Model.Amt)).filter(
@@ -89,43 +76,42 @@ def category_expense_this_month(user_id, category):
         extract("year", Expense_Model.date_time) == now.year
     ).scalar() or 0
 
+
+
 @app.route("/chat", methods=["POST"])
 def chat():
     if "user_id" not in session:
-        return jsonify({"reply": "Please login first"}), 401
+        return jsonify({"reply": "Please login first."})
+
+    user_id = session["user_id"]
 
     data = request.get_json()
     message = data.get("message", "")
-    user_id = session["user_id"]
 
-    intent = get_intent_llm(message)
+    intent_data = parse_intent(message)
 
-    session["last_intent"] = intent
-    session["last_message"] = message.lower()
+    intent = intent_data["intent"]
+    category = intent_data["category"]
+    period = intent_data["period"]
 
     if intent == "TOTAL_EXPENSE":
         total = total_expense_this_month(user_id)
-        reply = f"Your total expense this month is ₹{total} 💸"
+        reply = f"You spent ₹{total} this month."
 
     elif intent == "CATEGORY_EXPENSE":
-        categories = ["food", "travel", "shopping", "bills", "entertainment", "groceries"]
-        msg = message.lower()
-
-        category = next((c for c in categories if c in msg), None)
-
-        if not category:
-            reply = "Please mention a category like food, travel, shopping, etc."
-        else:
-            amount = category_expense_this_month(user_id, category)
-            reply = f"You spent ₹{amount} on {category} this month 🍽️"
+        total = category_expense_this_month(user_id, category)
+        reply = f"You spent ₹{total} on {category} this month."
 
     elif intent == "SAVING_ADVICE":
-        reply = "You could save money by reducing impulse purchases and tracking subscriptions 🧠"
+        reply = "Try tracking daily expenses and cutting non-essential spending 🍀"
 
     else:
-        reply = "I can help you analyze your expenses 😊"
+        reply = "Sorry, I didn’t understand that."
 
     return jsonify({"reply": reply})
+
+
+
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -137,13 +123,28 @@ def login():
         flash("Invalid credentials")
     return render_template("login.html")
 
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        if User_Model.query.filter_by(username=request.form["username"]).first():
+            flash("User already exists")
+            return redirect(url_for("register"))
+
+        user = User_Model(username=request.form["username"])
+        user.set_password(request.form["password"])
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for("login"))
+    return render_template("register.html")
+
+
 @app.route("/upload_upi", methods=["POST"])
 def upload_upi():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-
-    file=request.files["upi_file"]
+    file = request.files["upi_file"]
 
     if not file.filename.endswith(".csv"):
         flash("Please upload a CSV file")
@@ -165,21 +166,6 @@ def upload_upi():
     db.session.commit()
     flash("UPI transactions imported successfully!")
     return redirect(url_for("dashboard"))
-
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        if User_Model.query.filter_by(username=request.form["username"]).first():
-            flash("User already exists")
-            return redirect(url_for("register"))
-
-        user = User_Model(username=request.form["username"])
-        user.set_password(request.form["password"])
-        db.session.add(user)
-        db.session.commit()
-        return redirect(url_for("login"))
-    return render_template("register.html")
 
 
 @app.route("/logout")
@@ -226,6 +212,9 @@ def dashboard():
     )
 
 
+
 if __name__ == "__main__":
-    app.run(port=5001, debug=True)
+    port = int(os.environ.get("PORT", 5001))
+    app.run(host="0.0.0.0", port=port, debug=True)
+
 

@@ -58,5 +58,20 @@ button {
     margin-top: 20px;
     box-shadow: 0 8px 25px rgba(214, 51, 132, 0.08);
 }
+.log-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+}
+
+.log-card {
+    width: 100%;
+    max-width: 650px;
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
 
 
