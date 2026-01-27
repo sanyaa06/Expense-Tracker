@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block manual_content %}
+<form method="POST" action="{{ url_for('dashboard') }}">
+    <div class="mb-3">
+        <label>Amount</label>
+        <input type="number" name="Amt" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label>Category</label>
+        <input type="text" name="Type" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label>Description</label>
+        <input type="text" name="Desc" class="form-control">
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        Save Expense
+    </button>
+</form>
+{% endblock %}
+

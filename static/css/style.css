@@ -1,36 +1,62 @@
-
-
-body{
-    background-color: palevioletred;
-    min-height: 100vh;
-}
-.login-bg{
-    background-color: bisque;
-}
-.login-card{
-    width: 100%;
-    max-width: 420px;
-    border-radius: 15px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-    border: none;
+/* ===== Global ===== */
+body {
+    background-color: #fff7fb; /* very light pink */
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    color: #444;
 }
 
-.login-card h3{
-    color: hotpink;
-    font-weight: 700;
-
+/* Center container */
+.container {
+    max-width: 600px;
 }
 
-.login-card .btn-primary:hover{
-    background: #4f464f
-}
-
-.login-card .btn-outline-secondary {
-    border-radius: 8px;
+/* ===== Headings ===== */
+h1 {
+    color: #d63384; /* pastel pink */
     font-weight: 600;
+    margin-bottom: 20px;
 }
 
-.reg-bg{
-    background-color: beige;
+/* ===== Buttons ===== */
+button {
+    border-radius: 12px;
+    padding: 10px 22px;
+    font-weight: 500;
+    transition: all 0.25s ease;
 }
+
+/* Manual Button */
+#manualBtn {
+    background-color: #f8bcd4;
+    border: none;
+    color: #5a0033;
+}
+
+#manualBtn:hover {
+    background-color: #f3a6c7;
+    transform: translateY(-2px);
+}
+
+/* Upload Button */
+#uploadBtn {
+    background-color: #fde2ee;
+    border: 1px solid #f3a6c7;
+    color: #8a1c52;
+}
+
+#uploadBtn:hover {
+    background-color: #f8bcd4;
+    transform: translateY(-2px);
+}
+
+/* ===== Sections ===== */
+#manualSec,
+#uploadSection {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 8px 25px rgba(214, 51, 132, 0.08);
+}
+
 

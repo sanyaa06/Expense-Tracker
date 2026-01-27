@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 
-{% block content %}
+{% block manual_content %}
    <h2>Add an Expense!</h2>
-     <form action="{{ url_for('dashboard') }}" method="POST">
+     <form action="{{ url_for('dashboard') }}" method="POST" id="addexpenseform">
        <div class="mb-3">
         <label for="Amt" class="form-label">Amount Spent</label>
         <input type="number" class="form-control" name="Amt" id="Amt" placeholder="Enter integer value only" aria-describedby="emailHelp">
@@ -65,5 +65,55 @@
   </tbody>
 </table>
   {% endif %}
+  <hr>
 
-{% endblock content %}
+</div>
+
+
+<h3>AI Expense Assistant 🤖</h3>
+
+<div id="chat-box" style="
+    border:1px solid #ccc;
+    padding:10px;
+    height:200px;
+    overflow-y:auto;
+    margin-bottom:10px;
+">
+</div>
+
+<input id="chat-input"
+       type="text"
+       placeholder="Ask about your expenses..."
+       class="form-control"
+       style="width:80%; display:inline-block;">
+
+<button class="btn btn-success mt-2" onclick="sendMessage()">Send</button>
+
+<script>
+async function sendMessage() {
+    const input = document.getElementById("chat-input");
+    const message = input.value.trim();
+    if (!message) return;
+
+    const chatBox = document.getElementById("chat-box");
+    chatBox.innerHTML += `<div><b>You:</b> ${message}</div>`;
+    input.value = "";
+
+    const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+    });
+
+    const data = await res.json();
+    chatBox.innerHTML += `<div><b>Bot:</b> ${data.reply}</div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+</script>
+
+
+{% endblock manual_content %}
+
+{% block upload_content %}
+    {% include 'upload.html' %}
+{% endblock %}

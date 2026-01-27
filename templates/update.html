@@ -1,26 +1,43 @@
 {% extends 'base.html' %}
 
-{% block content %}
+{% block manual_content %}
 
-<h1>Update Your Expense</h1>
+<h2 class="mb-4">Update Your Expense</h2>
 
-<form action="" method="POST">
-    <div class="mb-3">
-        <label for="Amt" class="form-label">Amount Spent</label>
-        <input type="number" class="form-control" name="Amt" id="Amt" value="{{ expense.Amt }}">
-    </div>
-    
-    <div class="mb-3">
-        <label for="Type" class="form-label">Type of Expenditure</label>
-        <input type="text" class="form-control" name="Type" id="Type" value="{{ expense.Type }}">
-    </div>
+<form method="POST">
 
     <div class="mb-3">
-        <label for="Desc" class="form-label">Description</label>
-        <input type="text" class="form-control" name="Desc" id="Desc" value="{{ expense.Desc }}">
+        <label class="form-label">Amount Spent</label>
+        <input type="number"
+               class="form-control"
+               name="Amt"
+               value="{{ expense.Amt }}"
+               required>
     </div>
 
-    <button type="submit" class="btn btn-primary">Update</button>
+    <div class="mb-3">
+        <label class="form-label">Type of Expenditure</label>
+        <input type="text"
+               class="form-control"
+               name="Type"
+               value="{{ expense.Type }}"
+               required>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <input type="text"
+               class="form-control"
+               name="Desc"
+               value="{{ expense.Desc }}"
+               required>
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        Update Expense
+    </button>
+
 </form>
 
-{% endblock content %}
+{% endblock manual_content %}
+

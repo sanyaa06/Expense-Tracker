@@ -1,0 +1,16 @@
+<h2>Upload UPI Statement</h2>
+
+<form action="{{ url_for('upload_upi') }}" method="POST" enctype="multipart/form-data">
+    <input
+        type="file"
+        name="upi_file"
+        accept=".csv"
+        class="form-control mb-3"
+        required
+    >
+
+    <button type="submit" class="btn btn-dark">
+        Upload & Import
+    </button>
+</form>
+

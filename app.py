@@ -1,106 +1,191 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+
+import csv
+from io import TextIOWrapper
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
-from sqlalchemy import func
+from sqlalchemy import func, extract
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_restful import Api, Resource
-from flask_jwt_extended import (
-    JWTManager, create_access_token,
-    jwt_required, get_jwt_identity
-)
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv()
 
 
 app = Flask(__name__)
-
 app.secret_key = "supersecretkey"
-app.config["JWT_SECRET_KEY"] = "jwt-secret-key"
+
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///expense.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JWT_SECRET_KEY"] = "jwt-secret-key"
 
 db = SQLAlchemy(app)
 api = Api(app)
 jwt = JWTManager(app)
 
-with app.app_context():
-    db.create_all()
 
+from transformers import pipeline
 
+classifier = pipeline(
+    "zero-shot-classification",
+    model="facebook/bart-large-mnli"
+)
 
-def expense_to_dict(expense):
-    return {
-        "id": expense.id,
-        "amount": expense.Amt,
-        "type": expense.Type,
-        "description": expense.Desc,
-        "date_time": expense.date_time.isoformat()
-    }
+INTENT_LABELS = [
+    "TOTAL_EXPENSE",
+    "CATEGORY_EXPENSE",
+    "MONTHLY_SUMMARY",
+    "SAVING_ADVICE",
+    "GENERAL_CHAT"
+]
+
+def get_intent_llm(message):
+    result = classifier(message, INTENT_LABELS)
+    return result["labels"][0]
 
 
 class User_Model(db.Model):
     __tablename__ = "users"
-
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(200), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
         self.password = generate_password_hash(password)
 
-    def __repr__(self):
-        return f"User {self.username}"
-
 
 class Expense_Model(db.Model):
     __tablename__ = "expenses"
-
     id = db.Column(db.Integer, primary_key=True)
     Amt = db.Column(db.Integer, nullable=False)
     Type = db.Column(db.String(200), nullable=False)
     Desc = db.Column(db.String(200), nullable=False)
     date_time = db.Column(db.DateTime, default=datetime.utcnow)
-
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
-    def __repr__(self):
-        return f"Expense {self.id} - {self.Type}"
 
+with app.app_context():
+    db.create_all()
+
+
+def total_expense_this_month(user_id):
+    now = datetime.now()
+    return db.session.query(func.sum(Expense_Model.Amt)).filter(
+        Expense_Model.user_id == user_id,
+        extract("month", Expense_Model.date_time) == now.month,
+        extract("year", Expense_Model.date_time) == now.year
+    ).scalar() or 0
+
+
+def category_expense_this_month(user_id, category):
+    now = datetime.now()
+    return db.session.query(func.sum(Expense_Model.Amt)).filter(
+        Expense_Model.user_id == user_id,
+        Expense_Model.Type.ilike(f"%{category}%"),
+        extract("month", Expense_Model.date_time) == now.month,
+        extract("year", Expense_Model.date_time) == now.year
+    ).scalar() or 0
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    if "user_id" not in session:
+        return jsonify({"reply": "Please login first"}), 401
+
+    data = request.get_json()
+    message = data.get("message", "")
+    user_id = session["user_id"]
+
+    intent = get_intent_llm(message)
+
+    session["last_intent"] = intent
+    session["last_message"] = message.lower()
+
+    if intent == "TOTAL_EXPENSE":
+        total = total_expense_this_month(user_id)
+        reply = f"Your total expense this month is ₹{total} 💸"
+
+    elif intent == "CATEGORY_EXPENSE":
+        categories = ["food", "travel", "shopping", "bills", "entertainment", "groceries"]
+        msg = message.lower()
+
+        category = next((c for c in categories if c in msg), None)
+
+        if not category:
+            reply = "Please mention a category like food, travel, shopping, etc."
+        else:
+            amount = category_expense_this_month(user_id, category)
+            reply = f"You spent ₹{amount} on {category} this month 🍽️"
+
+    elif intent == "SAVING_ADVICE":
+        reply = "You could save money by reducing impulse purchases and tracking subscriptions 🧠"
+
+    else:
+        reply = "I can help you analyze your expenses 😊"
+
+    return jsonify({"reply": reply})
 
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        user = User_Model.query.filter_by(username=username).first()
-
-        if user and check_password_hash(user.password, password):
+        user = User_Model.query.filter_by(username=request.form["username"]).first()
+        if user and check_password_hash(user.password, request.form["password"]):
             session["user_id"] = user.id
             return redirect(url_for("dashboard"))
-        else:
-            flash("Invalid username or password")
-
+        flash("Invalid credentials")
     return render_template("login.html")
+
+@app.route("/upload_upi", methods=["POST"])
+def upload_upi():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+
+    file=request.files["upi_file"]
+
+    if not file.filename.endswith(".csv"):
+        flash("Please upload a CSV file")
+        return redirect(url_for("dashboard"))
+
+    csv_file = TextIOWrapper(file, encoding="utf-8")
+    reader = csv.DictReader(csv_file)
+
+    for row in reader:
+        expense = Expense_Model(
+            Amt=int(float(row["Amount"])),
+            Type=row.get("Category", "Other"),
+            Desc=row.get("Description", "UPI Transaction"),
+            date_time=datetime.strptime(row["Date"], "%Y-%m-%d"),
+            user_id=session["user_id"]
+        )
+        db.session.add(expense)
+
+    db.session.commit()
+    flash("UPI transactions imported successfully!")
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        if User_Model.query.filter_by(username=username).first():
+        if User_Model.query.filter_by(username=request.form["username"]).first():
             flash("User already exists")
             return redirect(url_for("register"))
 
-        user = User_Model(username=username)
-        user.set_password(password)
+        user = User_Model(username=request.form["username"])
+        user.set_password(request.form["password"])
         db.session.add(user)
         db.session.commit()
-
         return redirect(url_for("login"))
-
     return render_template("register.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user_id", None)
+    return redirect(url_for("login"))
 
 
 @app.route("/dashboard", methods=["GET", "POST"])
@@ -109,14 +194,10 @@ def dashboard():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        Amt = int(request.form["Amt"])
-        Type = request.form["Type"]
-        Desc = request.form["Desc"]
-
         expense = Expense_Model(
-            Amt=Amt,
-            Type=Type,
-            Desc=Desc,
+            Amt=int(request.form["Amt"]),
+            Type=request.form["Type"],
+            Desc=request.form["Desc"],
             user_id=session["user_id"]
         )
         db.session.add(expense)
@@ -145,102 +226,6 @@ def dashboard():
     )
 
 
-@app.route("/update/<int:id>", methods=["GET", "POST"])
-def update(id):
-    expense = Expense_Model.query.filter_by(id=id).first_or_404()
-
-    if request.method == "POST":
-        expense.Amt = int(request.form["Amt"])
-        expense.Type = request.form["Type"]
-        expense.Desc = request.form["Desc"]
-        db.session.commit()
-        return redirect(url_for("dashboard"))
-
-    return render_template("update.html", expense=expense)
-
-
-@app.route("/delete/<int:id>")
-def delete(id):
-    expense = Expense_Model.query.filter_by(id=id).first_or_404()
-    db.session.delete(expense)
-    db.session.commit()
-    return redirect(url_for("dashboard"))
-
-
-@app.route("/logout")
-def logout():
-    session.pop("user_id", None)
-    return redirect(url_for("login"))
-
-
-class ApiLogin(Resource):
-    def post(self):
-        data = request.get_json()
-        user = User_Model.query.filter_by(username=data["username"]).first()
-
-        if user and check_password_hash(user.password, data["password"]):
-            token = create_access_token(identity=user.id)
-            return {"access_token": token}, 200
-
-        return {"message": "Invalid credentials"}, 401
-
-
-class ExpenseListAPI(Resource):
-
-    @jwt_required()
-    def get(self):
-        user_id = get_jwt_identity()
-        expenses = Expense_Model.query.filter_by(user_id=user_id).all()
-        return [expense_to_dict(e) for e in expenses], 200
-
-    @jwt_required()
-    def post(self):
-        user_id = get_jwt_identity()
-        data = request.get_json()
-
-        expense = Expense_Model(
-            Amt=data["amount"],
-            Type=data["type"],
-            Desc=data["description"],
-            user_id=user_id
-        )
-        db.session.add(expense)
-        db.session.commit()
-
-        return expense_to_dict(expense), 201
-
-
-class ExpenseAPI(Resource):
-
-    @jwt_required()
-    def put(self, id):
-        user_id = get_jwt_identity()
-        expense = Expense_Model.query.filter_by(id=id, user_id=user_id).first_or_404()
-
-        data = request.get_json()
-        expense.Amt = data["amount"]
-        expense.Type = data["type"]
-        expense.Desc = data["description"]
-
-        db.session.commit()
-        return expense_to_dict(expense), 200
-
-    @jwt_required()
-    def delete(self, id):
-        user_id = get_jwt_identity()
-        expense = Expense_Model.query.filter_by(id=id, user_id=user_id).first_or_404()
-        db.session.delete(expense)
-        db.session.commit()
-        return {"message": "Deleted"}, 200
-
-
-api.add_resource(ApiLogin, "/api/login")
-api.add_resource(ExpenseListAPI, "/api/expenses")
-api.add_resource(ExpenseAPI, "/api/expenses/<int:id>")
-
-
-import os
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(port=5001, debug=True)
+

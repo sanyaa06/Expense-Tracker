@@ -15,6 +15,9 @@ typing_extensions==4.15.0
 blinker==1.9.0
 Flask==3.1.2
 Werkzeug==3.1.4
+python-dotenv
+requests
+
 
 
 
