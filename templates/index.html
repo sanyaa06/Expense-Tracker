@@ -51,7 +51,7 @@
   <tbody>
     {% for expense in allExpense %} 
         <tr>
-           <th scope="row">{{expense.id}}</th>
+           <th scope="row">{{ loop.index }}</th>
            <td>{{expense.Amt}}</td>
            <td>{{expense.Type}}</td>
            <td>{{expense.Desc}}</td>  

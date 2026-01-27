@@ -211,6 +211,25 @@ def dashboard():
         total_month=total_month
     )
 
+@app.route("/delete/<int:id>")
+def delete_expense(id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    expense = Expense_Model.query.get_or_404(id)
+
+    
+    if expense.user_id != session["user_id"]:
+        flash("Unauthorized action")
+        return redirect(url_for("dashboard"))
+
+    db.session.delete(expense)
+    db.session.commit()
+    flash("Expense deleted successfully")
+
+    return redirect(url_for("dashboard"))
+
+
 
 
 if __name__ == "__main__":
