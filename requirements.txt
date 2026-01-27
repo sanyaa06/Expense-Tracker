@@ -17,6 +17,8 @@ Flask==3.1.2
 Werkzeug==3.1.4
 python-dotenv
 requests
+transformers
+torch
 
 
 
